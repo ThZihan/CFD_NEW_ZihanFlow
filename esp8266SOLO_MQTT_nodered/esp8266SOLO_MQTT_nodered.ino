@@ -6,8 +6,8 @@
 int deviceid = 1;
 
 // Wi-Fi credentials
-#define WIFI_SSID "IUB-Wave"
-#define WIFI_PASSWORD ""
+#define WIFI_SSID "IUB_BUS_Shuttle"
+#define WIFI_PASSWORD "fabber@Bus"
 
 // MQTT server details
 #define MQTT_HOST IPAddress(103, 237, 39, 27)
