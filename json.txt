@@ -1,0 +1,103 @@
+[
+    {
+        "id": "e1f2a3b4c5d6",
+        "type": "tab",
+        "label": "Zihan Sensor Data",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "c0f1a2b3d4e5",
+        "type": "mqtt in",
+        "z": "e1f2a3b4c5d6",
+        "name": "",
+        "topic": "Zihan/device1/sensor",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "mqtt_broker_config",
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "f1e2d3c4b5a6"
+            ]
+        ]
+    },
+    {
+        "id": "f1e2d3c4b5a6",
+        "type": "json",
+        "z": "e1f2a3b4c5d6",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 350,
+        "y": 100,
+        "wires": [
+            [
+                "d4c3b2a1e5f6"
+            ]
+        ]
+    },
+    {
+        "id": "d4c3b2a1e5f6",
+        "type": "function",
+        "z": "e1f2a3b4c5d6",
+        "name": "Process Data",
+        "func": "// Access sensor data\nvar deviceid = msg.payload.deviceid;\nvar temp = msg.payload.temp;\nvar hum = msg.payload.hum;\nvar pressure = msg.payload.pressure;\nvar altitude = msg.payload.altitude;\nvar pm1 = msg.payload.pm1;\nvar pm25 = msg.payload.pm25;\nvar pm10 = msg.payload.pm10;\nvar co2 = msg.payload.co2;\n\n// Example: Add timestamp\nmsg.payload.timestamp = new Date().toISOString();\n\n// Example: Log temperature above threshold\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 100,
+        "wires": [
+            [
+                "b5a4e3d2c1f0"
+            ]
+        ]
+    },
+    {
+        "id": "b5a4e3d2c1f0",
+        "type": "debug",
+        "z": "e1f2a3b4c5d6",
+        "name": "Debug Output",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 750,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "mqtt_broker_config",
+        "type": "mqtt-broker",
+        "name": "MQTT Broker",
+        "broker": "103.237.39.27",
+        "port": "1883",
+        "clientid": "",
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "sessionExpiry": ""
+    }
+]
