@@ -70,6 +70,6 @@ void loop() {
   Serial3.print("|PM10:"); Serial3.print(pm10);
   Serial3.print("|CO2:"); Serial3.print(CO2);
   Serial3.println();
-
-  delay(1000);  // Adjust delay as needed
+  Serial.println(String(temp)+" "+ String(hum)+" " +String(pressure)+" "+String(pm1)+" "+String(pm25)+" "+String(pm10)+" "+String(CO2));
+  delay(10000);  // Adjust delay as needed
 }
