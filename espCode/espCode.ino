@@ -13,16 +13,17 @@
 #define MQTT_BASE_TOPIC "Zihan/device"
 
 // Unique device ID
-int deviceid = 1;
+int deviceid = 3;
 
 AsyncMqttClient mqttClient;
 Ticker mqttReconnectTimer;
+Ticker wifiReconnectTimer;
 
 WiFiEventHandler wifiConnectHandler;
 WiFiEventHandler wifiDisconnectHandler;
-Ticker wifiReconnectTimer;
 
-String dataBuffer = "";  // Buffer for incoming data from Arduino
+char dataBuffer[256];  // Character array for incoming data buffer
+int bufferIndex = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -49,48 +50,72 @@ void loop() {
   // Read data from Arduino Mega (UART3)
   while (Serial.available()) {
     char c = Serial.read();
-    dataBuffer += c;
+
+    // Prevent buffer overflow
+    if (bufferIndex < sizeof(dataBuffer) - 1) {
+      dataBuffer[bufferIndex++] = c;
+    }
 
     // Process and send data if we detect the end of a packet
     if (c == '\n') {
+      dataBuffer[bufferIndex] = '\0';  // Null-terminate the string
       if (processAndSendData(dataBuffer)) {
         Serial.println("Data sent to MQTT successfully.");
       } else {
         Serial.println("Error: Invalid data format.");
       }
-      dataBuffer = "";  // Clear buffer after processing
+      bufferIndex = 0;  // Reset buffer index after processing
     }
   }
-
-  delay(100);
 }
 
 void connectToWifi() {
-  Serial.println("Connecting to Wi-Fi...");
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  int attempt = 0;
-  while (WiFi.status() != WL_CONNECTED && attempt < 10) {
-    delay(500);
-    Serial.print(".");
-    attempt++;
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\nConnected to Wi-Fi");
-  } else {
-    Serial.println("\nFailed to connect. Retrying...");
-    delay(5000);
-    connectToWifi();
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Connecting to Wi-Fi...");
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   }
 }
 
-bool processAndSendData(String data) {
+void onWifiConnect(const WiFiEventStationModeGotIP& event) {
+  Serial.println("Connected to Wi-Fi.");
+  connectToMqtt();
+}
+
+void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
+  Serial.println("Disconnected from Wi-Fi.");
+  mqttReconnectTimer.detach();
+  wifiReconnectTimer.once(5, connectToWifi);  // Retry connection every 5 seconds
+}
+
+void connectToMqtt() {
+  if (!mqttClient.connected()) {
+    Serial.println("Connecting to MQTT...");
+    mqttClient.connect();
+  }
+}
+
+void onMqttConnect(bool sessionPresent) {
+  Serial.println("Connected to MQTT.");
+}
+
+void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
+  Serial.println("Disconnected from MQTT.");
+  if (WiFi.isConnected()) {
+    mqttReconnectTimer.once(2, connectToMqtt);  // Retry MQTT connection every 2 seconds
+  }
+}
+
+void onMqttPublish(uint16_t packetId) {
+  Serial.print("Publish acknowledged. PacketId: ");
+  Serial.println(packetId);
+}
+
+bool processAndSendData(const char* data) {
   float temp, hum, pressure, pm1, pm25, pm10;
   int CO2;
 
   // Parse the data received from Arduino
-  int result = sscanf(data.c_str(), "T:%f|H:%f|P:%f|PM1:%f|PM25:%f|PM10:%f|CO2:%d", &temp, &hum, &pressure, &pm1, &pm25, &pm10, &CO2);
+  int result = sscanf(data, "T:%f|H:%f|P:%f|PM1:%f|PM25:%f|PM10:%f|CO2:%d", &temp, &hum, &pressure, &pm1, &pm25, &pm10, &CO2);
 
   // Check if parsing was successful
   if (result != 7) {
@@ -113,40 +138,12 @@ bool processAndSendData(String data) {
   String topic = String(MQTT_BASE_TOPIC) + String(deviceid) + "/sensor";
 
   // Publish data to MQTT topic
-  mqttClient.publish(topic.c_str(), 1, true, payload.c_str());
-  Serial.printf("Published data to topic %s: %s\n", topic.c_str(), payload.c_str());
-
-  return true;
-}
-
-void onWifiConnect(const WiFiEventStationModeGotIP& event) {
-  Serial.println("Connected to Wi-Fi.");
-  connectToMqtt();
-}
-
-void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
-  Serial.println("Disconnected from Wi-Fi.");
-  mqttReconnectTimer.detach();
-  wifiReconnectTimer.once(2, connectToWifi);
-}
-
-void connectToMqtt() {
-  Serial.println("Connecting to MQTT...");
-  mqttClient.connect();
-}
-
-void onMqttConnect(bool sessionPresent) {
-  Serial.println("Connected to MQTT.");
-}
-
-void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
-  Serial.println("Disconnected from MQTT.");
-  if (WiFi.isConnected()) {
-    mqttReconnectTimer.once(2, connectToMqtt);
+  if (mqttClient.connected()) {
+    mqttClient.publish(topic.c_str(), 1, true, payload.c_str());
+    Serial.printf("Published data to topic %s: %s\n", topic.c_str(), payload.c_str());
+    return true;
+  } else {
+    Serial.println("Error: MQTT client not connected.");
+    return false;
   }
-}
-
-void onMqttPublish(uint16_t packetId) {
-  Serial.print("Publish acknowledged. PacketId: ");
-  Serial.println(packetId);
 }

@@ -3,7 +3,7 @@
 #include <AsyncMqttClient.h>
 
 // Unique device ID (Change this for each device: 1 to 10)
-int deviceid = 4;
+int deviceid = 1;
 
 // Wi-Fi credentials
 #define WIFI_SSID "IUB_BUS_Shuttle"
